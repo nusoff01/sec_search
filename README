@@ -1,1 +1,8 @@
-TBD
+README
+Created by: Nick Usoff
+
+
+Dependencies for this project: 
+urllib2
+bs4
+os

@@ -85,7 +85,7 @@ def extract_document(filing_link, cik):
 			trunc_url = doc_url[:last_slash]
 			filing_id = trunc_url[trunc_url.rfind('/'):]
 
-			file_from_url(doc_url, ("testOutput/"+ cik + "/" + filing_id + "_"
+			file_from_url(doc_url, ("output/"+ cik + "/" + filing_id + "_"
 				          + doc_url[last_slash + 1:]))
 	return
 
@@ -129,7 +129,6 @@ def file_from_url (url, path):
 	    f.write(html)
 	return
 
-
 	
 ##############################################################################
 # Testing Functions
@@ -138,14 +137,11 @@ def file_from_url (url, path):
 def test_file_from_url ():
 	url = "https://www.sec.gov/Archives/edgar/data/1041859/000114420408067808/v134037_8k.htm"
 	file_from_url(url, "testOutput/1.html" )
-	# to be removed
-	print()
 	return
 
 ##############################################################################
 # Exectution 
 ##############################################################################
-
 
 # Go through each line in templist and use as a CIK
 
@@ -153,31 +149,14 @@ with open('templist.txt') as f:
     lines = f.read().splitlines()
 
 cik_pages = []
-# for line in lines:
-# 	cik_pages.append(search_CIK(line))
-
-# print(cik_pages)
 
 filing_links_list = []
 for cik in lines:
 	filing_links_list.append(find_classification(cik))
 
-print(filing_links_list)
-
 for company in filing_links_list:
-	# print(company)
 	for filing in company[0]:
-		# print(filing)
 	 	extract_document(filing, company[1])
-
-
-def create_filing_name(filing_url):
-	last_slash = filing_url.rfind('/')
-	trunc_url = filing_url[:last_slash]
-	return trunc_url[trunc_url.rfind('/'):]
-
-print(create_filing_name("https://www.sec.gov/Archives/edgar/data/99302/000120677416005327/transcat_8k.htm"))
-
 
 
 
