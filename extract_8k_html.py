@@ -10,9 +10,10 @@
 # Dependencies  
 ##############################################################################
 
-import urllib2
+
 from bs4 import BeautifulSoup
 import os
+import urllib2
 
 
 ##############################################################################
@@ -68,7 +69,7 @@ def find_classification (cik_num):
 
 
 # extract_document: from a link to a filing, find the corresponding document
-# 				    and write it to a local file
+#		            url and path where it should go
 
 def extract_document(filing_link, cik):
 	filing_url = sec_base + filing_link
@@ -85,7 +86,9 @@ def extract_document(filing_link, cik):
 			trunc_url = doc_url[:last_slash]
 			filing_id = trunc_url[trunc_url.rfind('/'):]
 
-			file_from_url(doc_url, ("output/"+ cik + "/" + filing_id + "_"
+			# file_from_url(doc_url, ("output/"+ cik + "/" + filing_id + "_"
+			# 	          + doc_url[last_slash + 1:]))
+			return (doc_url, ("output/"+ cik + "/" + filing_id + "_"
 				          + doc_url[last_slash + 1:]))
 	return
 
@@ -143,6 +146,20 @@ def test_file_from_url ():
 # Exectution 
 ##############################################################################
 
+# write_to_file: takes in a file and a path and writes the file to the path
+
+def write_to_file(file, path): 
+	if not os.path.exists(os.path.dirname(path)):
+	    try:
+	        os.makedirs(os.path.dirname(path))
+	    except OSError as exc: # Guard against race condition
+	        if exc.errno != errno.EEXIST:
+	            raise
+	with open(path, "w") as f:
+	    f.write(file)
+	return
+
+
 # Go through each line in templist and use as a CIK
 
 with open('templist.txt') as f:
@@ -154,9 +171,33 @@ filing_links_list = []
 for cik in lines:
 	filing_links_list.append(find_classification(cik))
 
+
+url_path_list = []
 for company in filing_links_list:
 	for filing in company[0]:
-	 	extract_document(filing, company[1])
+	 	url_path_list.append(extract_document(filing, company[1]))
+
+
+
+
+
+import grequests
+rs = (grequests.get(u[0]) for u in url_path_list)
+
+path_list = zip(*url_path_list)[1]
+responses = grequests.map(rs)
+
+url_unzipped = []
+content_unzipped = []
+for response in responses:
+	url_unzipped.append(str(response.url))
+	content_unzipped.append(str(response.content))
+
+response_path_list = zip(content_unzipped, path_list)
+
+for res_path in response_path_list:
+	write_to_file(res_path[0], res_path[1])
+
 
 
 
