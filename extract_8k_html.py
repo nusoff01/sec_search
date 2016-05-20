@@ -24,7 +24,7 @@ sec_base = "http://www.sec.gov/"
 
 def search_CIK (cik_num, cik_start):
 	cik_url = create_CIK_URL(cik_num, cik_start)
-	print("searching: " + cik_url)
+	# print("searching: " + cik_url)
 	response = urllib2.urlopen(cik_url)
 	cik_html = response.read()
 	return cik_html
@@ -39,6 +39,7 @@ def find_classification (cik_num):
 	cik_start = 0
 	cont_true = True
 	count_filings = 0
+	filing_links = []
 	while cont_true:
 		cik_page = search_CIK(cik_num, cik_start)
 		soup = BeautifulSoup(cik_page, "html.parser")
@@ -48,8 +49,9 @@ def find_classification (cik_num):
 			for row in soupfind:
 				try:
 					typeTDStr = str(row.findAll('td')[2])
-					if(typeTDStr.find("2.02") > -1 or typeTDStr.find("2.05") > -1):
+					if(typeTDStr.find("2.01") > -1 or typeTDStr.find("2.05") > -1):
 						count_filings += 1
+						filing_links.append(row.findAll('a')[0]['href'])
 				except:
 					pass
 		except:
@@ -57,9 +59,24 @@ def find_classification (cik_num):
 		cont_true = next_page_present(cik_page)
 		cik_start += 100
 	print(count_filings)
-	return 0
+	return filing_links
 
 
+# extract_document: from a link to a filing, find the corresponding document
+# 				    and write it to a local file
+
+def extract_document(filing_link):
+	filing_url = sec_base + filing_link
+	response = urllib2.urlopen(filing_url)
+	filing_html = response.read()
+	soup = BeautifulSoup(filing_html, "html.parser")
+	filing_rows = soup.findAll('table')[0].findAll('tr')
+	for row in filing_rows:
+		if(str(row).find('<td scope="row">8-K') != -1):
+			print("hit")
+			return
+	print("miss")
+	print(soup.findAll('table')[0])
 
 
 
@@ -97,9 +114,13 @@ cik_pages = []
 
 # print(cik_pages)
 
-
+filing_links_list = []
 for cik in lines:
-	find_classification(cik)
+	filing_links_list.append(find_classification(cik))
+
+for company in filing_links_list:
+	for filing in company:
+		extract_document(filing)
 
 
 
