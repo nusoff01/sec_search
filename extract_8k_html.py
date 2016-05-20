@@ -27,14 +27,14 @@ sec_base = "http://www.sec.gov/"
 ##############################################################################
 
 # search_CIK: takes in a CIK number, and returns the raw page of the search
-#             result
+#             result in a tuple with the CIK number
 
 def search_CIK (cik_num, cik_start):
 	cik_url = create_CIK_URL(cik_num, cik_start)
 	# print("searching: " + cik_url)
 	response = urllib2.urlopen(cik_url)
 	cik_html = response.read()
-	return cik_html
+	return (cik, cik_html)
 
 
 # search_documents: takes in a cik_num and returns a list of document URLs for
@@ -47,7 +47,7 @@ def find_classification (cik_num):
 	filing_links = []
 	while cont_true:
 		cik_page = search_CIK(cik_num, cik_start)
-		soup = BeautifulSoup(cik_page, "html.parser")
+		soup = BeautifulSoup(cik_page[1], "html.parser")
 		try:
 			soupfind = soup.findAll('table')[2].findAll('tr')
 
@@ -61,28 +61,33 @@ def find_classification (cik_num):
 					pass
 		except:
 			pass
-		cont_true = next_page_present(cik_page)
+		cont_true = next_page_present(cik_page[1])
 		cik_start += 100
-	print(count_filings)
-	return filing_links
+	print(str(cik_num) + ": " + str(count_filings))
+	return (filing_links, cik_num)
 
 
 # extract_document: from a link to a filing, find the corresponding document
 # 				    and write it to a local file
 
-def extract_document(filing_link):
+def extract_document(filing_link, cik):
 	filing_url = sec_base + filing_link
+	print("filing_url: " + filing_url)
 	response = urllib2.urlopen(filing_url)
 	filing_html = response.read()
 	soup = BeautifulSoup(filing_html, "html.parser")
 	filing_rows = soup.findAll('table')[0].findAll('tr')
 	for row in filing_rows:
 		if(str(row).find('<td scope="row">8-K') != -1):
-			print(row)
+			# print(row)
+			doc_url = sec_base + str(row.findAll('a')[0]['href'])
+			last_slash = doc_url.rfind('/')
+			trunc_url = doc_url[:last_slash]
+			filing_id = trunc_url[trunc_url.rfind('/'):]
 
-			return
-	print("miss")
-	print(soup.findAll('table')[0])
+			file_from_url(doc_url, ("testOutput/"+ cik + "/" + filing_id + "_"
+				          + doc_url[last_slash + 1:]))
+	return
 
 
 ##############################################################################
@@ -132,7 +137,10 @@ def file_from_url (url, path):
 
 def test_file_from_url ():
 	url = "https://www.sec.gov/Archives/edgar/data/1041859/000114420408067808/v134037_8k.htm"
-	file_from_url(url, "testOutput/testHTML.html")
+	file_from_url(url, "testOutput/1.html" )
+	# to be removed
+	print()
+	return
 
 ##############################################################################
 # Exectution 
@@ -150,16 +158,28 @@ cik_pages = []
 
 # print(cik_pages)
 
-# filing_links_list = []
-# for cik in lines:
-# 	filing_links_list.append(find_classification(cik))
+filing_links_list = []
+for cik in lines:
+	filing_links_list.append(find_classification(cik))
 
-# for company in filing_links_list:
-# 	for filing in company:
-# 		extract_document(filing)
+print(filing_links_list)
+
+for company in filing_links_list:
+	# print(company)
+	for filing in company[0]:
+		# print(filing)
+	 	extract_document(filing, company[1])
 
 
-test_file_from_url()
+def create_filing_name(filing_url):
+	last_slash = filing_url.rfind('/')
+	trunc_url = filing_url[:last_slash]
+	return trunc_url[trunc_url.rfind('/'):]
+
+print(create_filing_name("https://www.sec.gov/Archives/edgar/data/99302/000120677416005327/transcat_8k.htm"))
+
+
+
 
 
 
