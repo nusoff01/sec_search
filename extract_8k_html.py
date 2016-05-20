@@ -6,18 +6,25 @@
 # organization and determining whether that organization has an "Item 2.01" or
 # "Item 2.05" associated with Item
 
-###################### External Libraries ##################
+##############################################################################
+# Dependencies  
+##############################################################################
+
 import urllib2
 from bs4 import BeautifulSoup
+import os
 
-###################### Global Variables ####################
+
+##############################################################################
+# Global Variables  
+##############################################################################
+
 sec_base = "http://www.sec.gov/"
 
 
-
-
-
-
+##############################################################################
+# Functions
+##############################################################################
 
 # search_CIK: takes in a CIK number, and returns the raw page of the search
 #             result
@@ -29,11 +36,9 @@ def search_CIK (cik_num, cik_start):
 	cik_html = response.read()
 	return cik_html
 
+
 # search_documents: takes in a cik_num and returns a list of document URLs for
 #                   any document which contains either a 2.01 or 2.05
-
-## implementation notes: looks like this is a table, going through row by row
-#  seems to be the way to go
 
 def find_classification (cik_num):
 	cik_start = 0
@@ -73,16 +78,16 @@ def extract_document(filing_link):
 	filing_rows = soup.findAll('table')[0].findAll('tr')
 	for row in filing_rows:
 		if(str(row).find('<td scope="row">8-K') != -1):
-			print("hit")
+			print(row)
+
 			return
 	print("miss")
 	print(soup.findAll('table')[0])
 
 
-
-
-
-###################### Helper Functions ####################
+##############################################################################
+# Helper Functions  
+##############################################################################
 
 # create_CIK_URL: from a CIK and starting index, creates and returns the 
 #                 corresponding search url
@@ -93,14 +98,45 @@ def create_CIK_URL (cik_num, startNum):
 	                str(startNum) + "&count=100")
 
 
-# boolean function which checks to see if there is a next page of filings for a company
+# next_page_present: boolean function which checks to see if there is a next 
+#                    page of filings for a company
+
 def next_page_present (cik_page):
 	soup = BeautifulSoup(cik_page, "html.parser")
 	table = soup.findAll('table')[1]
 	return (str(table).find("Next 100")) != -1
+
+
+# file_from_url: takes in a url and a location, and writes to the location 
+#                the raw HTML at whatever the url is.
+
+def file_from_url (url, path):
+	response = urllib2.urlopen(url)
+	html = response.read()
+
+	if not os.path.exists(os.path.dirname(path)):
+	    try:
+	        os.makedirs(os.path.dirname(path))
+	    except OSError as exc: # Guard against race condition
+	        if exc.errno != errno.EEXIST:
+	            raise
+	with open(path, "w") as f:
+	    f.write(html)
+	return
+
+
 	
+##############################################################################
+# Testing Functions
+##############################################################################
 
+def test_file_from_url ():
+	url = "https://www.sec.gov/Archives/edgar/data/1041859/000114420408067808/v134037_8k.htm"
+	file_from_url(url, "testOutput/testHTML.html")
 
+##############################################################################
+# Exectution 
+##############################################################################
 
 
 # Go through each line in templist and use as a CIK
@@ -114,13 +150,18 @@ cik_pages = []
 
 # print(cik_pages)
 
-filing_links_list = []
-for cik in lines:
-	filing_links_list.append(find_classification(cik))
+# filing_links_list = []
+# for cik in lines:
+# 	filing_links_list.append(find_classification(cik))
 
-for company in filing_links_list:
-	for filing in company:
-		extract_document(filing)
+# for company in filing_links_list:
+# 	for filing in company:
+# 		extract_document(filing)
+
+
+test_file_from_url()
+
+
 
 
 
