@@ -16,6 +16,7 @@ import os
 import urllib2
 from datetime import datetime
 import grequests
+import sys
 
 
 ##############################################################################
@@ -62,7 +63,7 @@ def ciks_to_classifications (cik_list):
 		for cik in cik_list:
 			cik_urls.append(create_CIK_URL(cik, cik_start))
 		rs = (grequests.get(cik_url) for cik_url in cik_urls)
-		responses = grequests.map(rs)
+		responses = grequests.map(rs, exception_handler=greq_exception_handler)
 
 		cik_content_list = content_zipper(cik_list, responses)
 		cik_list = []
@@ -90,7 +91,7 @@ def extract_documents(filing_links_list):
 		ciks.append(filing_link[0])
 		filing_urls.append(sec_base + filing_link[1])
 	rs = (grequests.get(filing_url) for filing_url in filing_urls)
-	responses = grequests.map(rs)
+	responses = grequests.map(rs, exception_handler=greq_exception_handler)
 	print("loaded filing pages. Total time elapsed: " + 
 		  str(datetime.now() - startTime))
 	cik_filing_list = content_zipper(ciks, responses)
@@ -139,8 +140,15 @@ def next_page_present (cik_page):
 #                 list with the content of each response
 def content_zipper (other_list, responses):
 	content_unzipped = []
+	counter = 0
 	for response in responses:
-		content_unzipped.append(response.content)
+		try: 
+			content_unzipped.append(response.content)
+		except Exception as e:
+			print(e)
+			print(other_list[counter])
+		finally:
+			counter += 1
 	return zip(other_list, content_unzipped)
 
 
@@ -156,6 +164,12 @@ def write_to_file(file, path):
 	            raise
 	with open(path, "w") as f:
 	    f.write(file)
+	return
+
+def greq_exception_handler (request, exception):
+	print("request failed. Quiting program.")
+	print(request.url)
+	sys.exit()
 	return
 
 ##############################################################################
@@ -182,7 +196,7 @@ url_path_list = extract_documents(filing_links_list)
 rs = (grequests.get(u[0]) for u in url_path_list)
 
 path_list = zip(*url_path_list)[1]
-responses = grequests.map(rs)
+responses = grequests.map(rs, exception_handler=greq_exception_handler)
 print("loaded raw filings. Total time elapsed: " + 
 		  str(datetime.now() - startTime))
 

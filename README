@@ -6,3 +6,6 @@ Dependencies for this project:
 urllib2
 bs4
 os
+datetime
+grequests
+sys
