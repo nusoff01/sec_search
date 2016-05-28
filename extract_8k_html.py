@@ -50,6 +50,26 @@ def find_filings (cik_page):
 		pass
 	return filing_links
 
+
+# ciks_to_cik_pages: given a list of ciks, return a list of tuples with a cik
+# 					 number and a cik page
+
+# TBD finish this
+
+def ciks_to_cik_pages (cik_list):
+	cik_urls = []
+	cik_start = 0
+	filing_links_list = []
+
+	while len(cik_list) > 0 : # only proceed if there are urls left to process
+		for cik in cik_list:
+			cik_urls.append(create_CIK_URL(cik, cik_start))
+		rs = (grequests.get(cik_url) for cik_url in cik_urls)
+		responses = grequests.map(rs, exception_handler=greq_exception_handler)
+
+		cik_content_list = content_zipper(cik_list, responses)
+
+
 # ciks_to_classifications: given a list of ciks, return a list of tuples with
 #                          a cik and a link to a filing associated with that 
 #						   cik
@@ -69,6 +89,7 @@ def ciks_to_classifications (cik_list):
 		cik_list = []
 		cik_urls = []
 		for cik_content in cik_content_list:
+			# try: 
 			filing_links = find_filings(cik_content[1])
 			for filing_link in filing_links:
 				filing_links_list.append((cik_content[0], str(filing_link)))
@@ -133,8 +154,12 @@ def create_CIK_URL (cik_num, startNum):
 
 def next_page_present (cik_page):
 	soup = BeautifulSoup(cik_page, "html.parser")
-	table = soup.findAll('table')[1]
-	return (str(table).find("Next 100") != -1)
+	# if soup fails, retrun false
+	try:
+		table = soup.findAll('table')[1]
+		return (str(table).find("Next 100") != -1)
+	except:
+		return False
 
 # content_zipper: given a list of responses and another list, zip the other
 #                 list with the content of each response
@@ -153,7 +178,7 @@ def content_zipper (other_list, responses):
 
 
 
-# write_to_file: takes in a file and a path and writes the file to the path
+# write_to_file: takes in a file and a path and writes the file to the path.
 
 def write_to_file(file, path): 
 	if not os.path.exists(os.path.dirname(path)):
@@ -181,6 +206,9 @@ def greq_exception_handler (request, exception):
 ##############################################################################
 # Exectution 
 ##############################################################################
+
+
+
 
 # Go through each line in templist and use as a CIK
 
