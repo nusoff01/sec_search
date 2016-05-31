@@ -25,6 +25,7 @@ import sys
 
 sec_base = "http://www.sec.gov/"
 startTime = datetime.now()
+BATCH_SIZE = 200
 
 ##############################################################################
 # Functions
@@ -212,36 +213,49 @@ def greq_exception_handler (request, exception):
 
 # Go through each line in templist and use as a CIK
 
-with open('templist.txt') as f:
+with open('CIKlist.txt') as f:
     lines = f.read().splitlines()
 
 
 
-filing_links_list = ciks_to_classifications(lines)
-url_path_list = extract_documents(filing_links_list)
+# Only process 100 at a time
+start_pos = 0
+lines_length = len(lines)
+while (start_pos < lines_length):
+	print(("starting a new batch of downloads. The first CIK is number " 
+		  + str(start_pos) + " out of " + str(lines_length)))
+	cur_lines = lines[start_pos:(start_pos+50)]
 
 
-rs = (grequests.get(u[0]) for u in url_path_list)
+	filing_links_list = ciks_to_classifications(cur_lines)
+	url_path_list = extract_documents(filing_links_list)
+	if (len(url_path_list) == 0):
+		start_pos += BATCH_SIZE
+		continue
 
-path_list = zip(*url_path_list)[1]
-responses = grequests.map(rs, exception_handler=greq_exception_handler)
-print("loaded raw filings. Total time elapsed: " + 
+
+	rs = (grequests.get(u[0]) for u in url_path_list)
+
+	path_list = zip(*url_path_list)[1]
+	responses = grequests.map(rs, exception_handler=greq_exception_handler)
+	print("loaded raw filings. Total time elapsed: " + 
+			  str(datetime.now() - startTime))
+
+	url_unzipped = []
+	content_unzipped = []
+	for response in responses:
+		url_unzipped.append(str(response.url))
+		content_unzipped.append(str(response.content))
+
+	response_path_list = zip(content_unzipped, path_list)
+
+	for res_path in response_path_list:
+		write_to_file(res_path[0], res_path[1])
+
+
+	print("Wrote files locally. Total time elapsed: " + 
 		  str(datetime.now() - startTime))
-
-url_unzipped = []
-content_unzipped = []
-for response in responses:
-	url_unzipped.append(str(response.url))
-	content_unzipped.append(str(response.content))
-
-response_path_list = zip(content_unzipped, path_list)
-
-for res_path in response_path_list:
-	write_to_file(res_path[0], res_path[1])
-
-
-print("Wrote files locally. Total time elapsed: " + 
-	  str(datetime.now() - startTime))
+	start_pos += BATCH_SIZE
 
 
 
